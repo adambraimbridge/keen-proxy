@@ -1,0 +1,7 @@
+	{
+  "name": "keen-proxy",
+  "version": "0.0.1",
+  "devDependencies": {
+    "next-build-tools": "^5.x.x"
+  }
+}
