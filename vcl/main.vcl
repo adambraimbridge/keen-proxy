@@ -22,109 +22,117 @@ sub vcl_recv {
 	}
 
 	set req.http.Protocol = "https://";
-
+	set req.http.Rhys-Control = "RhysRhys";
 	return(lookup);
 }
 
 sub vcl_fetch {
 	#FASTLY fetch
-	if (req.request == "OPTIONS") {
-		return (deliver);
-	}
+	# set req.http.Rhys-Control = "RHYSRHYSRHYS";
+	# if (req.request == "OPTIONS") {
+	# 	return (deliver);
+	# }
 
-	if (beresp.status >= 500 && beresp.status < 600) {
-		# deliver stale if the object is available
-		if (stale.exists) {
-			return(deliver_stale);
-		}
-
-		# Attempt restart
-		if (req.restarts < 1 && (req.request == "GET" || req.request == "HEAD")) {
-			restart;
-		}
-	}
-
-	if(req.restarts > 0 ) {
-		set beresp.http.Fastly-Restarts = req.restarts;
-	}
-
-
-	if (beresp.http.Set-Cookie) {
-		set req.http.Fastly-Cachetype = "SETCOOKIE";
-		return (pass);
-	}
-
-	# if (beresp.http.Expires || beresp.http.Surrogate-Control ~ "max-age" || beresp.http.Cache-Control ~ "(s-maxage|max-age)") {
-	# 	# keep the ttl here
-	# } else
-	# TODO if Cache-Control set in req copy over to beresp, but avoid that complexity for now
-	# if (req.http.TTL) {
-	# 	set beresp.ttl = req.http.TTL;
-	# 	if (req.http.Stale-While-Revalidate) {
-	# 		set beresp.stale_while_revalidate = req.http.Stale-While-Revalidate;
-	# 	} else {
-	# 		set beresp.stale_while_revalidate = 5m;
+	# if (beresp.status >= 500 && beresp.status < 600) {
+	# 	# deliver stale if the object is available
+	# 	if (stale.exists) {
+	# 		return(deliver_stale);
 	# 	}
-	# } else
 
-	if (req.url ~ "&timeframe=this") {
-		if (req.url ~ "&interval=minutely") {
-			set beresp.ttl = 5m;
-			set beresp.stale_while_revalidate = 1m;
-		} else if (req.url ~ "&interval=hourly") {
-			set beresp.ttl = 15m;
-			set beresp.stale_while_revalidate = 5m;
-		} else if (req.url ~ "&interval=daily") {
-			set beresp.ttl = 3h;
-			set beresp.stale_while_revalidate = 5m;
-		} else if (req.url ~ "&interval=weekly") {
-			set beresp.ttl = 1d;
-			set beresp.stale_while_revalidate = 5m;
-		} else if (req.url ~ "&interval=monthly") {
-			set beresp.ttl = 7d;
-			set beresp.stale_while_revalidate = 5m;
-		} else if (req.url ~ "&interval=yearly") {
-			set beresp.ttl = 7d;
-			set beresp.stale_while_revalidate = 5m;
-		} else {
-			# apply the default ttl
-			set beresp.ttl = 30m;
-		}
-		set beresp.stale_if_error = 4h;
-	} else {
-		# Longer caches when requesting previous or relative timeframes
-		if (req.url ~ "&interval=minutely") {
-			set beresp.ttl = 5m;
-			set beresp.stale_while_revalidate = 1m;
-		} else if (req.url ~ "&interval=hourly") {
-			set beresp.ttl = 1h;
-			set beresp.stale_while_revalidate = 5m;
-		} else if (req.url ~ "&interval=daily") {
-			set beresp.ttl = 8h;
-			set beresp.stale_while_revalidate = 5m;
-		} else if (req.url ~ "&interval=weekly") {
-			set beresp.ttl = 7d;
-			set beresp.stale_while_revalidate = 5m;
-		} else if (req.url ~ "&interval=monthly") {
-			set beresp.ttl = 28d;
-			set beresp.stale_while_revalidate = 5m;
-		} else if (req.url ~ "&interval=yearly") {
-			set beresp.ttl = 28d;
-			set beresp.stale_while_revalidate = 5m;
-		} else {
-			# apply the default ttl
-			set beresp.ttl = 30m;
-		}
-		# apply the default ttl
-		set beresp.ttl = 30m;
-		set beresp.stale_if_error = 48h;
-	}
+	# 	# Attempt restart
+	# 	if (req.restarts < 1 && (req.request == "GET" || req.request == "HEAD")) {
+	# 		restart;
+	# 	}
+	# }
 
-	if (beresp.status == 500 || beresp.status == 503) {
-		set req.http.Fastly-Cachetype = "ERROR";
-		set beresp.ttl = 1s;
-		set beresp.grace = 5s;
-	}
+	# if (req.restarts > 0 ) {
+	# 	set beresp.http.Fastly-Restarts = req.restarts;
+	# }
+
+
+	# if (beresp.http.Set-Cookie) {
+	# 	set req.http.Fastly-Cachetype = "SETCOOKIE";
+	# 	return (pass);
+	# }
+
+
+
+	# if (req.http.Cache-Control && req.http.Cache-Control ~ "stale-while-revalidate" ) {
+	# 	set beresp.http.Surrogate-Control = req.http.Cache-Control;
+	# } else if (req.http.Cache-Control && req.http.Cache-Control !~ "no-cache") {
+	# 	set beresp.http.Surrogate-Control = req.http.Cache-Control {", stale-while-revalidate=300"};
+	# } else {
+	# 	set req.http.Stale-While-Revalidate = "stale-while-revalidate=300";
+	# 	if (req.url ~ "&timeframe=this") {
+
+
+	# 		if (req.url ~ "&interval=minutely") {
+	# 			# 1 minute cache
+	# 			set req.http.Cache-Control = "max-age=300";
+	# 			set req.http.Stale-While-Revalidate = "stale-while-revalidate=60";
+	# 		} else if (req.url ~ "&interval=hourly") {
+	# 			# 15 minute cache
+	# 			set req.http.Cache-Control = "max-age=900";
+	# 		} else if (req.url ~ "&interval=daily") {
+	# 			# 3 hour cache
+	# 			set req.http.Cache-Control = "max-age=10800";
+	# 		} else if (req.url ~ "&interval=weekly") {
+	# 			# 1 day cache
+	# 			set req.http.Cache-Control = "max-age=86400";
+	# 		} else if (req.url ~ "&interval=monthly") {
+	# 			# 1 week cache
+	# 			set req.http.Cache-Control = "max-age=604800";
+	# 		} else if (req.url ~ "&interval=yearly") {
+	# 			# 1 week cache
+	# 			set req.http.Cache-Control = "max-age=604800";
+	# 		} else {
+	# 			# default to 30 minute cache
+	# 			set req.http.Cache-Control = "max-age=1800";
+	# 		}
+	# 	} else {
+	# 		# Longer caches when requesting previous or relative timeframes
+	# 		if (req.url ~ "&interval=minutely") {
+	# 			# 5 minute cache
+	# 			set req.http.Cache-Control = "max-age=300";
+	# 			set req.http.Stale-While-Revalidate = "stale-while-revalidate=60";
+	# 		} else if (req.url ~ "&interval=hourly") {
+	# 			# 1 hour cache
+	# 			set req.http.Cache-Control = "max-age=3600";
+	# 		} else if (req.url ~ "&interval=daily") {
+	# 			# 8 hour cache
+	# 			set req.http.Cache-Control = "max-age=28800";
+	# 		} else if (req.url ~ "&interval=weekly") {
+	# 			# 7 day cache
+	# 			set req.http.Cache-Control = "max-age=604800";
+	# 		} else if (req.url ~ "&interval=monthly") {
+	# 			# 28 day cache
+	# 			set req.http.Cache-Control = "max-age=16934400";
+	# 		} else if (req.url ~ "&interval=yearly") {
+	# 			# 28 day cache
+	# 			set req.http.Cache-Control = "max-age=16934400";
+	# 		} else {
+	# 			# default to 30 minute cache
+	# 			set req.http.Cache-Control = "max-age=1800";
+	# 		}
+	# 	}
+
+	# 	set beresp.http.Surrogate-Control = req.http.Cache-Control {", "} req.http.Stale-While-Revalidate;
+	# }
+
+	# if (beresp.http.Surrogate-Control !~ "stale-if-error") {
+	# 	set beresp.http.Surrogate-Control = beresp.http.Surrogate-Control {", stale-if-error=14400"};
+	# }
+
+	# set beresp.http.Surrogate-Control = "max-age=300";
+
+	set beresp.http.Rhys-Controls = req.http.Rhys-Control;
+
+
+	# if (beresp.status == 500 || beresp.status == 503) {
+	# 	set req.http.Fastly-Cachetype = "ERROR";
+	# 	set beresp.ttl = 1s;
+	# 	set beresp.grace = 5s;
+	# }
 
 	return (deliver);
 }
@@ -135,7 +143,8 @@ sub vcl_hit {
 	if (!obj.cacheable) {
 		return(pass);
 	}
-	set req.http.X-TTL = obj.ttl;
+	# set req.http.X-TTL = obj.ttl;
+	set req.http.Rhys-Controls = obj.http.Rhys-Controls;
 
 	return(deliver);
 }
@@ -147,7 +156,9 @@ sub vcl_miss {
 
 sub vcl_deliver {
 
-	#FASTLY deliver
+	# FASTLY deliver
+	set resp.http.Rhys-Controls = req.http.Rhys-Controls;
+	set resp.http.Rhys-Control = req.http.Rhys-Control;
 
 	if (req.request == "OPTIONS") {
 		set resp.status = 202;
