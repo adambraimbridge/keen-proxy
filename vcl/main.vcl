@@ -67,7 +67,10 @@ sub vcl_fetch {
 	# 	}
 	# } else
 
-	if (req.url ~ "&timeframe=this") {
+	if (req.url ~ "&cache=4h") {
+		set beresp.ttl = 4h;
+		set beresp.stale_while_revalidate = 5m;
+	} else if (req.url ~ "&timeframe=this") {
 		if (req.url ~ "&interval=minutely") {
 			set beresp.ttl = 5m;
 			set beresp.stale_while_revalidate = 1m;
