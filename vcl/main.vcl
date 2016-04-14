@@ -31,7 +31,6 @@ sub vcl_fetch {
 	if (req.request == "OPTIONS") {
 		return (deliver);
 	}
-
 	if (beresp.status >= 500 && beresp.status < 600) {
 		# deliver stale if the object is available
 		if (stale.exists) {
@@ -43,34 +42,32 @@ sub vcl_fetch {
 			restart;
 		}
 	}
-
 	if(req.restarts > 0 ) {
 		set beresp.http.Fastly-Restarts = req.restarts;
 	}
-
 
 	if (beresp.http.Set-Cookie) {
 		set req.http.Fastly-Cachetype = "SETCOOKIE";
 		return (pass);
 	}
 
-	# if (beresp.http.Expires || beresp.http.Surrogate-Control ~ "max-age" || beresp.http.Cache-Control ~ "(s-maxage|max-age)") {
-	# 	# keep the ttl here
-	# } else
-	# TODO if Cache-Control set in req copy over to beresp, but avoid that complexity for now
-	# if (req.http.TTL) {
-	# 	set beresp.ttl = req.http.TTL;
-	# 	if (req.http.Stale-While-Revalidate) {
-	# 		set beresp.stale_while_revalidate = req.http.Stale-While-Revalidate;
-	# 	} else {
-	# 		set beresp.stale_while_revalidate = 5m;
-	# 	}
-	# } else
-
-	if (req.url ~ "&cache=4h") {
-		set beresp.ttl = 4h;
+	if (req.http.Cache-Strategy) {
+		set beresp.http.Cache-Strategy = "custom";
 		set beresp.stale_while_revalidate = 5m;
+		set beresp.ttl = 30m;
+		set beresp.stale_if_error = 48h;
+
+		if (req.http.Cache-Strategy ~ "max-age=([0-9]+)") {
+		  set beresp.ttl = std.time(re.group.1, 30m);
+		}
+		if (req.http.Cache-Strategy ~ "stale-while-revalidate=([0-9]+)") {
+		  set beresp.stale_while_revalidate = std.time(re.group.1, 5m);
+		}
+		if (req.http.Cache-Strategy ~ "stale-if-error=([0-9]+)") {
+		  set beresp.stale_if_error = std.time(re.group.1, 48h);
+		}
 	} else if (req.url ~ "&timeframe=this") {
+		set beresp.http.Cache-Strategy = "this";
 		if (req.url ~ "&interval=minutely") {
 			set beresp.ttl = 5m;
 			set beresp.stale_while_revalidate = 1m;
@@ -95,6 +92,7 @@ sub vcl_fetch {
 		}
 		set beresp.stale_if_error = 4h;
 	} else {
+		set beresp.http.Cache-Strategy = "prev";
 		# Longer caches when requesting previous or relative timeframes
 		if (req.url ~ "&interval=minutely") {
 			set beresp.ttl = 5m;
@@ -122,7 +120,7 @@ sub vcl_fetch {
 		set beresp.ttl = 30m;
 		set beresp.stale_if_error = 48h;
 	}
-
+	# set beresp.http.Cache-Strategy = "after";
 	if (beresp.status == 500 || beresp.status == 503) {
 		set req.http.Fastly-Cachetype = "ERROR";
 		set beresp.ttl = 1s;
@@ -134,11 +132,9 @@ sub vcl_fetch {
 
 sub vcl_hit {
 	#FASTLY hit
-
 	if (!obj.cacheable) {
 		return(pass);
 	}
-	set req.http.X-TTL = obj.ttl;
 
 	return(deliver);
 }
@@ -156,7 +152,6 @@ sub vcl_deliver {
 		set resp.status = 202;
 	}
 	set resp.http.Access-Control-Allow-Origin = "*";
-
 	if (req.http.Error-Message){
 		set resp.http.Error-Message = req.http.Error-Message;
 	}
